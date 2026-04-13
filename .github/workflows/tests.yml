@@ -1,0 +1,232 @@
+name: checks
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        id: sync
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p ci-artifacts/lint
+          set -o pipefail
+          uv sync --locked --group dev 2>&1 | tee ci-artifacts/lint/lint-sync.log
+
+      - name: Ruff check
+        id: ruff_check
+        if: ${{ steps.sync.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run ruff check . --no-fix 2>&1 | tee ci-artifacts/lint/ruff-check.log
+
+      - name: Ruff format check
+        id: ruff_format
+        if: ${{ steps.sync.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run ruff format --check . 2>&1 | tee ci-artifacts/lint/ruff-format.log
+
+      - name: mypy
+        id: mypy
+        if: ${{ steps.sync.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run mypy . 2>&1 | tee ci-artifacts/lint/mypy.log
+
+      - name: Write lint metadata
+        if: ${{ always() }}
+        env:
+          SYNC_OUTCOME: ${{ steps.sync.outcome }}
+          RUFF_CHECK_OUTCOME: ${{ steps.ruff_check.outcome }}
+          RUFF_FORMAT_OUTCOME: ${{ steps.ruff_format.outcome }}
+          MYPY_OUTCOME: ${{ steps.mypy.outcome }}
+        run: |
+          python .github/scripts/ci_report.py write-lint-metadata --output ci-artifacts/lint/lint-metadata.json
+
+      - name: Upload lint results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-results
+          path: ci-artifacts/lint/
+          if-no-files-found: ignore
+
+      - name: Fail job if lint failed
+        if: ${{ steps.sync.outcome == 'failure' || steps.ruff_check.outcome == 'failure' || steps.ruff_format.outcome == 'failure' || steps.mypy.outcome == 'failure' }}
+        run: exit 1
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        id: sync
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p ci-artifacts/test
+          set -o pipefail
+          uv sync --locked --group dev 2>&1 | tee ci-artifacts/test/test-sync.log
+
+      - name: pytest
+        id: pytest
+        if: ${{ steps.sync.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run pytest \
+            --cov=. \
+            --no-cov-on-fail \
+            --junitxml=ci-artifacts/test/report.xml \
+            --cov-report html:ci-artifacts/test/htmlcov \
+            --cov-report xml:ci-artifacts/test/coverage.xml \
+            --cov-report term \
+            2>&1 | tee ci-artifacts/test/pytest.log
+
+      - name: Write test metadata
+        if: ${{ always() }}
+        env:
+          SYNC_OUTCOME: ${{ steps.sync.outcome }}
+          PYTEST_OUTCOME: ${{ steps.pytest.outcome }}
+        run: |
+          python .github/scripts/ci_report.py write-test-metadata --output ci-artifacts/test/test-metadata.json
+
+      - name: Upload test results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: ci-artifacts/test/
+          if-no-files-found: ignore
+
+      - name: Fail job if tests failed
+        if: ${{ steps.sync.outcome == 'failure' || steps.pytest.outcome == 'failure' }}
+        run: exit 1
+
+  report:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: ${{ always() }}
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+
+      - uses: actions/download-artifact@v5
+        continue-on-error: true
+        with:
+          name: lint-results
+          path: .artifacts/lint-results
+
+      - uses: actions/download-artifact@v5
+        continue-on-error: true
+        with:
+          name: test-results
+          path: .artifacts/test-results
+
+      - name: Build CI summary
+        env:
+          LINT_JOB_CONCLUSION: ${{ needs.lint.result }}
+          TEST_JOB_CONCLUSION: ${{ needs.test.result }}
+        run: |
+          python .github/scripts/ci_report.py render \
+            --lint-metadata .artifacts/lint-results/lint-metadata.json \
+            --test-metadata .artifacts/test-results/test-metadata.json \
+            --summary-file ci-report/ci-summary.md \
+            --comment-file ci-report/pr-comment.md
+
+      - name: Publish workflow summary
+        run: cat ci-report/ci-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment summary in PR
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        uses: actions/github-script@v8
+        env:
+          COMMENT_PATH: ci-report/pr-comment.md
+        with:
+          script: |
+            const fs = require("fs");
+            const marker = "<!-- ci-summary -->";
+            const body = fs.readFileSync(process.env.COMMENT_PATH, "utf8");
+            const issueNumber = context.issue.number;
+
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                per_page: 100,
+              },
+            );
+
+            const existing = comments.find(
+              (comment) => comment.user?.type === "Bot" && comment.body?.includes(marker),
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body,
+              });
+            }

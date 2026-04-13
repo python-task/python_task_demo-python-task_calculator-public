@@ -1,0 +1,46 @@
+# Bytecode and caches
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python packaging / build artifacts
+build/
+dist/
+site/
+*.egg-info/
+.eggs/
+
+# Test and coverage artifacts
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+report.xml
+
+# Type checker / linter caches
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+
+# Pre-commit cache
+.pre-commit-cache/
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+
+# Environment files
+.env
+.env.*
+*.env

@@ -1,0 +1,109 @@
+[project]
+name = "python-task-template"
+version = "0.1.0"
+description = "Base template for student Python projects"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "mypy==1.20.0",
+    "pre-commit==4.5.1",
+    "pytest>=9.0.2",
+    "pytest-cov==6.0.0",
+    "ruff==0.15.10",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+fix = false
+src = ["."]
+extend-exclude = [
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",       # pycodestyle errors
+    "W",       # pycodestyle warnings
+    "F",       # pyflakes
+    "I",       # isort
+    "B",       # bugbear
+    "UP",      # pyupgrade
+    "ANN",     # flake8-annotations
+    "C4",      # flake8-comprehensions
+    "SIM",     # flake8-simplify
+    "PIE",     # flake8-pie
+    "RET",     # flake8-return
+    "ARG",     # unused arguments
+    "BLE",     # blind except
+    "N",       # pep8-naming
+    "RUF",     # Ruff-specific rules
+    "TID251",  # banned-api
+]
+ignore = [
+    "E501",    # line length is formatter territory
+    "ANN401",  # do not ban Any globally at template level
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.ruff.lint.flake8-annotations]
+mypy-init-return = false
+suppress-dummy-args = false
+suppress-none-returning = false
+ignore-fully-untyped = false
+allow-star-arg-any = false
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"typing.Dict".msg = "Use dict[...] instead."
+"typing.FrozenSet".msg = "Use frozenset[...] instead."
+"typing.List".msg = "Use list[...] instead."
+"typing.Optional".msg = "Use X | None instead."
+"typing.Set".msg = "Use set[...] instead."
+"typing.Tuple".msg = "Use tuple[...] instead."
+"typing.Type".msg = "Use type[...] instead."
+"typing.Union".msg = "Use X | Y instead."
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = true
+skip-magic-trailing-comma = false
+
+[tool.mypy]
+python_version = "3.13"
+files = ["."]
+pretty = true
+show_error_context = true
+show_error_codes = true
+show_error_code_links = true
+
+warn_return_any = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unreachable = true
+
+no_implicit_optional = true
+strict_equality = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_any_generics = true
+
+ignore_missing_imports = false
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+# Тесты тоже должны быть типизированы, поэтому послаблений тут нет.
