@@ -418,7 +418,7 @@ uv run pre-commit install
 
 git checkout -b feature/my-task
 
-# переименуйте YOUR_APP_NAME_RENAME_ME в имя своего пакета
+# переименуйте calculater в имя своего пакета
 # пишите код внутри своего пакета верхнего уровня
 # пишите тесты в tests/
 
