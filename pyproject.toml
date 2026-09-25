@@ -16,7 +16,7 @@ dev = [
 ]
 
 [tool.coverage.run]
-omit = ["YOUR_APP_NAME_RENAME_ME/ui/*"]
+omit = ["calculator/ui/*"]
 
 [tool.ruff]
 line-length = 100
@@ -59,7 +59,6 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"YOUR_APP_NAME_RENAME_ME/*.py" = ["N999"]
 "__init__.py" = ["F401"]
 
 [tool.ruff.lint.flake8-annotations]
