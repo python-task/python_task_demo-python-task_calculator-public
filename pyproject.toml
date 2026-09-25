@@ -15,6 +15,9 @@ dev = [
     "ruff==0.15.10",
 ]
 
+[tool.coverage.run]
+omit = ["calculater/ui/*"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py313"
@@ -66,6 +69,10 @@ ignore-fully-untyped = false
 allow-star-arg-any = false
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
+"unittest".msg = "Use pytest-style tests and pytest-mock for mocking instead of unittest."
+"nose".msg = "Use pytest instead of nose."
+"nose2".msg = "Use pytest instead of nose2."
+"unittest2".msg = "Use pytest instead of unittest2."
 "typing.Dict".msg = "Use dict[...] instead."
 "typing.FrozenSet".msg = "Use frozenset[...] instead."
 "typing.List".msg = "Use list[...] instead."
