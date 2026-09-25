@@ -35,7 +35,7 @@ jobs:
         run: |
           mkdir -p ci-artifacts/lint
           set -o pipefail
-          uv sync --locked --group dev 2>&1 | tee ci-artifacts/lint/lint-sync.log
+          uv sync --group dev 2>&1 | tee ci-artifacts/lint/lint-sync.log
 
       - name: Ruff check
         id: ruff_check
@@ -107,7 +107,7 @@ jobs:
         run: |
           mkdir -p ci-artifacts/test
           set -o pipefail
-          uv sync --locked --group dev 2>&1 | tee ci-artifacts/test/test-sync.log
+          uv sync --group dev 2>&1 | tee ci-artifacts/test/test-sync.log
 
       - name: pytest
         id: pytest

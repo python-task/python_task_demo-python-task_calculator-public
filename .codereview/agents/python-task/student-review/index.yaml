@@ -1,0 +1,10 @@
+name: student-review
+description: Проверяет учебный Python-проект на русском языке и объясняет следующий шаг студенту.
+model_tier: medium
+effort: high
+file_globs:
+  - "**/*"
+applies_when:
+  - Изменён хотя бы один файл учебного проекта.
+required_on_match: true
+needs_full_file_content: true
